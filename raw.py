@@ -3,22 +3,7 @@ import pandas as pd
 
 listtypes = (list,tuple,set)
 
-def dirwalk(dir,omit=None,require=None):
-    """
-    Walks a directory and returns a list of all files in the directory.
-    If omit is specified, then any file containing the string omit will be
-    removed from the list. If require is specified, then only files containing
-    the string require will be included in the list.
-
-    args:
-        dir: the directory to walk
-        omit: a string or list of strings to omit from the list
-        require: a string or list of strings to require in the list
-
-    returns:
-        a list of files in the directory
-    """
-
+def dirwalk(dir: str, omit=None, require=None) -> list:
     if omit is None:
         omit = []
     if require is None:
@@ -41,17 +26,7 @@ def dirwalk(dir,omit=None,require=None):
 
     return files
 
-def findhead(excel_path, threshold=0.7):
-    """
-    Reads an Excel file and tries to detect the header row based on a threshold of non-empty cells.
-
-    Parameters:
-    - excel_path: str, path to the Excel file.
-    - threshold: float, fraction of non-empty cells in a row to consider it as a header.
-
-    Returns:
-    - header_row: int, the row number for the detected header.
-    """
+def findhead(excel_path: str, threshold=0.7) -> int:
     # Read the Excel file with no header
     df = pd.read_excel(excel_path, header=None)
 
@@ -63,11 +38,7 @@ def findhead(excel_path, threshold=0.7):
 
     return None  # No header detected
 
-def ftriage(f):
-    """
-    Determines the filetype and chooses an appropriate pandas read function.
-    """
-
+def ftriage(f: str) -> pd.DataFrame:
     ext = os.path.splitext(f)[1]
     if ext == '.csv':
         return pd.read_csv(f)
@@ -99,11 +70,6 @@ def findcat(df: pd.DataFrame) -> pd.Series:
         
         return 'catalog'
     
-    # related edge case: 'Catalog Number' and 'Secondary Catalog Number' are in the spreadsheet,
-    # but not at the very top of the sheet, so we need to find them
-
-
-
     # Iterate over columns and exclude those which match the specific criteria
     potential_id_columns = []
     for col in df.columns:
@@ -136,7 +102,6 @@ def findcat(df: pd.DataFrame) -> pd.Series:
     return df[potential_id_columns].nunique().idxmax()
 
 def findvals(df: pd.DataFrame, dimension='thickness', threshold=0.8) -> list:
-    
     # Define value ranges for each dimension
     dimension_ranges = {
         'thickness': (0, 0.8),
@@ -170,8 +135,7 @@ def findvals(df: pd.DataFrame, dimension='thickness', threshold=0.8) -> list:
 
     return potential_cols
 
-def fproc(f,fname=True,dimension='thickness',threshold=0.8):
-
+def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFrame:
     df = ftriage(f)
     catcol = findcat(df)
     valcols = findvals(df,dimension,threshold)
