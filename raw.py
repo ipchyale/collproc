@@ -41,6 +41,28 @@ def dirwalk(dir,omit=None,require=None):
 
     return files
 
+def findhead(excel_path, threshold=0.7):
+    """
+    Reads an Excel file and tries to detect the header row based on a threshold of non-empty cells.
+
+    Parameters:
+    - excel_path: str, path to the Excel file.
+    - threshold: float, fraction of non-empty cells in a row to consider it as a header.
+
+    Returns:
+    - header_row: int, the row number for the detected header.
+    """
+    # Read the Excel file with no header
+    df = pd.read_excel(excel_path, header=None)
+
+    # Iterate over the rows
+    for i, row in df.iterrows():
+        # Check the fraction of non-empty cells in the row
+        if row.dropna().count() / len(row) >= threshold:
+            return i  # This is likely the header row
+
+    return None  # No header detected
+
 def ftriage(f):
     """
     Determines the filetype and chooses an appropriate pandas read function.
@@ -50,7 +72,8 @@ def ftriage(f):
     if ext == '.csv':
         return pd.read_csv(f)
     elif ext == '.xls' or ext == '.xlsx':
-        return pd.read_excel(f)
+        header = findhead(f)
+        return pd.read_excel(f,header=header)
     else:
         raise ValueError('Filetype not supported.')
     
@@ -75,6 +98,11 @@ def findcat(df: pd.DataFrame) -> pd.Series:
         df['catalog'] = df['Catalog Number'] + df['Secondary Catalog Number']
         
         return 'catalog'
+    
+    # related edge case: 'Catalog Number' and 'Secondary Catalog Number' are in the spreadsheet,
+    # but not at the very top of the sheet, so we need to find them
+
+
 
     # Iterate over columns and exclude those which match the specific criteria
     potential_id_columns = []
@@ -142,7 +170,7 @@ def findvals(df: pd.DataFrame, dimension='thickness', threshold=0.8) -> list:
 
     return potential_cols
 
-def fprep(f,fname=True,dimension='thickness',threshold=0.8):
+def fproc(f,fname=True,dimension='thickness',threshold=0.8):
 
     df = ftriage(f)
     catcol = findcat(df)
@@ -162,6 +190,9 @@ def fprep(f,fname=True,dimension='thickness',threshold=0.8):
     # some valcol cells will be strings we cannot convert to float, so we convert them to NaN
     df[valcols] = df[valcols].apply(pd.to_numeric,errors='coerce')
 
+    # convert all values to positive
+    df[valcols] = df[valcols].abs()
+
     # create column where each cell is a list of all non-null values from the valcols
     df[dimension] = df[valcols].apply(lambda x: x.dropna().tolist(),axis=1)
 
@@ -176,5 +207,7 @@ def fprep(f,fname=True,dimension='thickness',threshold=0.8):
         
     if fname:
         df['fname'] = os.path.basename(f)
+
+    df = df.reset_index(drop=True)
     
     return df
