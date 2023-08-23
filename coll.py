@@ -99,7 +99,6 @@ class CollectionItem:
         if return_glyph:
             return radar
 
-
 def get_glyph_norm(i,dim,bounds):
     if dim=='roughness':
         val = np.median([item['roughness'] for item in i.texture])
@@ -134,4 +133,3 @@ def get_glyph_norms(i,universe,collvalsfile=None):
         ]
         
     return norms
-
