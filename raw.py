@@ -168,6 +168,12 @@ def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFr
 
     # select only catalog and dimension columns
     df = df[['catalog',dimension]]
+
+    # create a string version of the dimension column
+    df[dimension+'_str'] = df[dimension].apply(str)
+
+    # drop duplicates based on all columns except `dimension` (because Python cannot hash lists)
+    df = df.drop_duplicates(subset=df.columns.difference([dimension]))
         
     if fname:
         df['fname'] = os.path.basename(f)
