@@ -30,6 +30,9 @@ def findhead(excel_path: str, threshold=0.7) -> int:
     # Read the Excel file with no header
     df = pd.read_excel(excel_path, header=None)
 
+    # Ignore any column with all null values
+    df = df.loc[:, df.isnull().mean() < 1]
+
     # Iterate over the rows
     for i, row in df.iterrows():
         # Check the fraction of non-empty cells in the row
@@ -44,7 +47,9 @@ def ftriage(f: str) -> pd.DataFrame:
         return pd.read_csv(f)
     elif ext == '.xls' or ext == '.xlsx':
         header = findhead(f)
-        return pd.read_excel(f,header=header)
+        df = pd.read_excel(f,header=header)
+        df = df.loc[:, df.isnull().mean() < 1] # Drop any column with all null values
+        return df
     else:
         raise ValueError('Filetype not supported.')
     
@@ -117,8 +122,12 @@ def findvals(df: pd.DataFrame, dimension='thickness', threshold=0.8) -> list:
     lower_bound, upper_bound = dimension_ranges[dimension]
 
     potential_cols = []
-
     for col in df.columns:
+
+        # Exclude datetime columns from consideration
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            continue  # skip to the next column
+
         valid_count = 0
         for val in df[col]:
             try:
@@ -136,6 +145,7 @@ def findvals(df: pd.DataFrame, dimension='thickness', threshold=0.8) -> list:
     return potential_cols
 
 def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFrame:
+
     df = ftriage(f)
     catcol = findcat(df)
     valcols = findvals(df,dimension,threshold)
