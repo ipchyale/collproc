@@ -212,3 +212,10 @@ def extract_single_digit(s):
     if match:
         return match.group(0)
     return None
+
+def is_consecutive(series: pd.Series) -> bool:
+    # Take the difference between consecutive items
+    differences = series.diff().dropna()  # drop the first item which will be NaN
+    
+    # Check if all differences are equal to 1
+    return (differences == 1).all()
