@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import re
 
 listtypes = (list,tuple,set)
 
@@ -191,3 +192,23 @@ def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFr
     df = df.reset_index(drop=True)
     
     return df
+
+def extract_catalog_number(s):
+    match = re.search(r'(\d+[a-z]*)', s)
+    if match:
+        return match.group(1)
+    return None
+
+def extract_two_letter_code(s):
+    # Look for a pattern of a letter followed by either a letter or a digit.
+    match = re.search(r'([a-zA-Z][a-zA-Z\d])', s)
+    if match:
+        return match.group(1)
+    return None
+
+def extract_single_digit(s):
+    # Look for a pattern of a single digit either preceded by an underscore or surrounded by underscores.
+    match = re.search(r'(?<=_)\d(?=_|$)', s)
+    if match:
+        return match.group(0)
+    return None
