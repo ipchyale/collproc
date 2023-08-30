@@ -208,7 +208,7 @@ def parse_sample_id(s: str) -> dict:
     
     patterns = {
         'catalog': r'^\d{1,4}[a-zA-Z]{0,3}$',
-        'code': r'^[a-z][a-z0-9]$',
+        'manbran': r'^[a-z][a-z0-9]$',
         'mtrial': r'^\d$',  # matches a single integer
         'mloc': r'^[Dd][Mm][Ii][Nn]$|^[Dd][Mm][Aa][Xx]$',  # matches "dmin", "dmax" and their variations in case
         'mmode': r'^M[0-4]$'  # matches M followed by a single digit from 0 to 4
