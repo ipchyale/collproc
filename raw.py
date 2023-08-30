@@ -193,25 +193,38 @@ def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFr
     
     return df
 
-def extract_catalog_number(s):
-    match = re.search(r'(\d+[a-z]*)', s)
-    if match:
-        return match.group(1)
-    return None
+def process_string(s: str) -> list:
+    # 1. Split string using possible delimiters
+    tokens = re.split(r'[_\- ]+', s)
+    
+    # 2. Strip non-alphanumeric characters from the beginning and end of each token
+    cleaned_tokens = [re.sub(r'^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$', '', token).strip() for token in tokens]
+    
+    return cleaned_tokens
 
-def extract_two_letter_code(s):
-    # Look for a pattern of a letter followed by either a letter or a digit.
-    match = re.search(r'([a-zA-Z][a-zA-Z\d])', s)
-    if match:
-        return match.group(1)
-    return None
-
-def extract_single_digit(s):
-    # Look for a pattern of a single digit either preceded by an underscore or surrounded by underscores.
-    match = re.search(r'(?<=_)\d(?=_|$)', s)
-    if match:
-        return match.group(0)
-    return None
+def parse_sample_id(s: str) -> dict:
+    
+    tokens = process_string(s)
+    
+    patterns = {
+        'catalog': r'^\d{1,4}[a-zA-Z]{0,3}$',
+        'code': r'^[a-z][a-z0-9]$',
+        'mtrial': r'^\d$',  # matches a single integer
+        'mloc': r'^[Dd][Mm][Ii][Nn]$|^[Dd][Mm][Aa][Xx]$',  # matches "dmin", "dmax" and their variations in case
+        'mmode': r'^M[0-4]$'  # matches M followed by a single digit from 0 to 4
+    }
+    
+    result = {}
+    
+    for key, pattern in patterns.items():
+        for token in tokens:
+            if re.match(pattern, token):
+                result[key] = token
+                break
+        else:
+            result[key] = None
+    
+    return result
 
 def is_consecutive(series: pd.Series) -> bool:
     # Take the difference between consecutive items
