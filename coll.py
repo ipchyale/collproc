@@ -53,7 +53,7 @@ def get_collbounds(collvalsfile):
 class CollectionItem:
     def __init__(self):
         self.acc = ''
-        self.print = None  
+        self.printpath = ''  
         self.artist = ''
         self.nationality = ''
         self.active = ''
@@ -69,9 +69,6 @@ class CollectionItem:
         self.texture = [] # list of dicts with texture data
         self.fluorescence = [] # list of floats (AUC)
         self.goose = None
-        self.imagelight = None
-        self.basesat = None
-        self.kmap = None
 
     def draw_glyph(self,overwrite=False,return_glyph=True,universe='lml',collvalsfile=None,side=1600,c='#c99277'):
         if all([self.glyph is not None,not overwrite]):
