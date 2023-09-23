@@ -6,9 +6,10 @@ sys.path.append(os.path.expanduser("~")+"/ivpy/src")
 from ivpy import *
 from ivpy.plot import overlay
 from ivpy.glyph import _radar,_mat
+import pandas as pd
 
 HOME = os.path.expanduser("~") + "/"
-lmlvalsfile = HOME + "genome_2021/processing/genome/lml.pkl"
+lmlvalsfile = HOME + "lmlproc/proc/genome/lml.pkl"
 
 def pkl(o,o_path):
     with open(o_path,'wb') as f:
@@ -70,28 +71,37 @@ class CollectionItem:
         self.fluorescence = [] # list of floats (AUC)
         self.goose = None
 
-    def draw_glyph(self,overwrite=False,return_glyph=True,universe='lml',collvalsfile=None,side=1600,c='#c99277'):
+    def draw_glyph(self,overwrite=False,return_glyph=True,
+                   universe='lml',collvalsfile=None,colorloc='base',
+                   side=1600,c='#c99277'):
+        
         if all([self.glyph is not None,not overwrite]):
-            raise Exception("Glyph exists; if you wish to overwrite, pass `overwrite=True` to `draw_glyph()`")
+            print("Glyph already exists. Set `overwrite=True` to overwrite.")        
         
         if universe=='lml':
-            lmlnorms = get_glyph_norms(self,'lml')
+            lmlnorms = get_glyph_norms(self,'lml',colorloc)
             if collvalsfile is not None:
                 lmlradar = _radar(lmlnorms,radii=True,gridlines=True,radarfill='dimgrey',outline='#403931',side=side)
+                lmlradar = _mat(lmlradar)
 
-                collnorms = get_glyph_norms(self,'coll',collvalsfile)
+                collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
                 collradar = _radar(collnorms,radii=False,gridlines=False,radarfill=None,outline=c,side=side,coll=True)
+                collradar = _mat(collradar)
 
                 radar = overlay(lmlradar,collradar,side=side,bg='transparent')
 
             elif collvalsfile is None:
                 radar = _radar(lmlnorms,radii=True,gridlines=True,radarfill=c,outline='#403931',side=side)
+                radar = _mat(radar)
 
         elif universe=='coll':
-            collnorms = get_glyph_norms(self,'coll',collvalsfile)
+            collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
             radar = _radar(collnorms,radii=True,gridlines=True,radarfill=c,outline='#403931',side=side)
+            radar = _mat(radar)
 
-        self.glyph = radar
+        
+        if overwrite:
+            self.glyph = radar
 
         if return_glyph:
             return radar
@@ -101,6 +111,8 @@ def get_glyph_norm(i,dim,bounds):
         val = np.median([item['roughness'] for item in i.texture])
     elif dim=='bstar_base':
         val = np.median([item['LAB_B'] for item in i.color if item['mloc']=='base'])
+    elif dim=='bstar_image':
+        val = np.median([item['LAB_B'] for item in i.color if item['mloc']=='image'])
     else:
         val = np.median(getattr(i,dim))    
     
@@ -111,22 +123,40 @@ def get_glyph_norm(i,dim,bounds):
         
     return norm
 
-def get_glyph_norms(i,universe,collvalsfile=None):
+def get_glyph_norms(i,universe,colorloc,collvalsfile=None):
+    
+    if colorloc=='base':
+        colordim = 'bstar_base'
+    elif colorloc=='image':
+        colordim = 'bstar_image'
+    
     if universe=='lml':
         lmlbounds = get_lmlbounds()
-        norms = [
+        norms = [ # left, top, right, bottom
             get_glyph_norm(i,'thickness',lmlbounds['thickness']),
+            get_glyph_norm(i,colordim,lmlbounds[colordim]),
             get_glyph_norm(i,'gloss',lmlbounds['gloss']),
-            get_glyph_norm(i,'roughness',lmlbounds['roughness']),
-            get_glyph_norm(i,'bstar_base',lmlbounds['bstar_base'])
+            get_glyph_norm(i,'roughness',lmlbounds['roughness'])
         ]
     elif universe=='coll':
         collbounds = get_collbounds(collvalsfile)
         norms = [
             get_glyph_norm(i,'thickness',collbounds['thickness']),
+            get_glyph_norm(i,colordim,collbounds[colordim]),
             get_glyph_norm(i,'gloss',collbounds['gloss']),
-            get_glyph_norm(i,'roughness',collbounds['roughness']),
-            get_glyph_norm(i,'bstar_base',collbounds['bstar_base'])
+            get_glyph_norm(i,'roughness',collbounds['roughness'])
         ]
         
     return norms
+
+def class_list_to_dataframe(class_list):
+    """
+    Converts a list of class instances to a pandas dataframe.
+    """
+
+    df = pd.DataFrame()
+
+    for i in class_list:
+        df = df.append(i.__dict__,ignore_index=True)
+
+    return df
