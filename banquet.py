@@ -100,5 +100,224 @@ def banquet_tabling(collection_frame, reference_frame, feature_columns, d, eps=0
     tabling_with_lonelies_and_outsiders[attendees] = tabling
     tabling_with_lonelies_and_outsiders[lonelies] = 'lonely'
     tabling_with_lonelies_and_outsiders[outsiders] = 'outsider'
+
+    metric_tabling = tabling.loc[tabling != -1]
+    table_sharing_ratios = (intra_table_sharing_ratio(metric_tabling, guest_lists),
+                            inter_table_sharing_ratio(metric_tabling, guest_lists))
+
+    metrics = {
+        'd': d,
+        'tableable_percentage': compute_tableable_percentage(tabling_with_lonelies_and_outsiders),
+        'noise_percentage': compute_noise_percentage(tabling),
+        'intra_table_sharing_ratio': table_sharing_ratios[0],
+        'inter_table_sharing_ratio': table_sharing_ratios[1],
+        'guest_sharing_differential': guest_sharing_differential(table_sharing_ratios[0], table_sharing_ratios[1]),
+        'overlap_coefficient': overlap_coefficient(metric_tabling, guest_lists),
+        'jaccard_index': jaccard_index(metric_tabling, guest_lists),
+        'unique_vs_shared_guests': unique_vs_shared_guests(metric_tabling, guest_lists)
+    }
+
+    return tabling_with_lonelies_and_outsiders, metrics
+
+#------------------------------------------------------------------------------
+
+def compute_tableable_percentage(tabling):
+    total = len(tabling)
+    lonelies_and_outsiders = (tabling == 'lonely').sum() + (tabling == 'outsider').sum()
+    return (total - lonelies_and_outsiders) / total
+
+def compute_noise_percentage(tabling):
+    return (tabling == -1).sum() / len(tabling)
+
+# Guest-sharing metrics
+
+def intra_table_sharing_ratio(tabling, guest_lists):
+
+    """
+    This measures the extent to which members within a table share guests.
+    """
+
+    tables = tabling.unique()
     
-    return tabling_with_lonelies_and_outsiders
+    ratios = []
+
+    for table in tables:
+        table_members = tabling[tabling == table].index
+        all_guests = [guest_lists.loc[member] for member in table_members]
+        all_guests = [item for sublist in all_guests for item in sublist]
+        guest_counts = pd.Series(all_guests).value_counts()
+        total_guests = len(guest_counts)
+        shared_guests = (guest_counts > 1).sum()
+
+        ratio = shared_guests / total_guests if total_guests else 0
+        ratios.append(ratio)
+
+    return np.mean(ratios)
+
+def inter_table_sharing_ratio(tabling, guest_lists):
+
+    """
+    This measures the extent to which tables share guests. So, rather than 
+    count every time two members at different tables share a guest, we find the 
+    union of all guest lists for each table and treat each table as a single entity.
+    """
+
+    tables = tabling.unique()
+
+    table_guest_lists = []
+    for table in tables:
+        table_members = tabling[tabling == table].index
+        table_guest_list = list(set.union(*[set(guest_lists[member]) for member in table_members]))
+        table_guest_lists.append(table_guest_list)
+
+    all_guests = [item for sublist in table_guest_lists for item in sublist]
+    guest_counts = pd.Series(all_guests).value_counts()
+    total_guests = len(guest_counts)
+    shared_guests = (guest_counts > 1).sum()
+
+    ratio = shared_guests / total_guests if total_guests else 0
+
+    return ratio
+
+def guest_sharing_differential(intra_table_sharing_ratio, inter_table_sharing_ratio):
+
+    """
+    This measures the difference between intra and inter-table guest sharing.
+    """
+
+    return intra_table_sharing_ratio - inter_table_sharing_ratio
+
+def overlap_coefficient(tabling, guest_lists):
+
+    """
+    For any two tables: the size of the intersection of their guest 
+    lists divided by the size of the smaller of the two guest lists.
+    """
+
+    tables = tabling.unique()
+
+    table_guest_sets = []
+    for table in tables:
+        table_members = tabling[tabling == table].index
+        table_guest_set = set.union(*[set(guest_lists[member]) for member in table_members])
+        table_guest_sets.append(table_guest_set)
+
+    # Compute the overlap coefficient for each pair of tables
+    coefficients = []
+    for i in range(len(table_guest_sets)):
+        for j in range(i+1, len(table_guest_sets)):
+            intersection = len(table_guest_sets[i].intersection(table_guest_sets[j]))
+            min_size = min(len(table_guest_sets[i]), len(table_guest_sets[j]))
+            coefficient = intersection / min_size
+            coefficients.append(coefficient)
+
+    return np.mean(coefficients)
+
+def jaccard_index(tabling, guest_lists):
+
+    """
+    For any two tables: the size of the intersection of their guest 
+    lists divided by the size of the union of their guest lists.
+    """
+
+    tables = tabling.unique()
+
+    table_guest_sets = []
+    for table in tables:
+        table_members = tabling[tabling == table].index
+        table_guest_set = set.union(*[set(guest_lists[member]) for member in table_members])
+        table_guest_sets.append(table_guest_set)
+
+    # Compute the Jaccard index for each pair of tables
+    indices = []
+    for i in range(len(table_guest_sets)):
+        for j in range(i+1, len(table_guest_sets)):
+            intersection = len(table_guest_sets[i].intersection(table_guest_sets[j]))
+            union = len(table_guest_sets[i].union(table_guest_sets[j]))
+            index = intersection / union
+            indices.append(index)
+
+    return np.mean(indices)
+
+def unique_vs_shared_guests(tabling, guest_lists):
+
+    """
+    This metric counts the total number of unique guests across all tables and compares 
+    it to the total number of guests shared more than once by any two members, whether
+    they are at the same table or not.
+    """
+
+    tables = tabling.unique()
+
+    all_guests = set()
+    shared_guests = set()
+
+    # Gather all guests and their occurrences
+    guest_occurrences = {}
+    for table in tables:
+        table_members = tabling[tabling == table].index
+        table_guests = set.union(*[set(guest_lists[member]) for member in table_members])
+        all_guests.update(table_guests)
+
+        for guest in table_guests:
+            guest_occurrences[guest] = guest_occurrences.get(guest, 0) + 1
+
+    # Determine which guests are shared across tables
+    for guest, count in guest_occurrences.items():
+        if count > 1:
+            shared_guests.add(guest)
+
+    total_unique_guests = len(all_guests)
+    total_shared_guests = len(shared_guests)
+
+    ratio = total_shared_guests / total_unique_guests if total_unique_guests else 0
+
+    return ratio
+
+#------------------------------------------------------------------------------
+
+import matplotlib.pyplot as plt
+
+def find_inflection_points(mf, diff_threshold=0.1):
+    """
+    Returns a list of crucial values of d, where metrics make big jumps.
+    """
+
+    # Find several inflection points for each metric
+    inflection_points = []
+    for col in [item for item in mf.columns if item != 'd']:
+        for i in range(1, len(mf)):
+            if mf[col].iloc[i] - mf[col].iloc[i-1] > diff_threshold:
+                d_value = round(mf.d.iloc[i], 3)
+                inflection_points.append(d_value)
+
+    # return all inflection points appearing more than once
+    return [item for item in inflection_points if inflection_points.count(item) > 1]    
+
+def plot_metrics(metrics_list,inflection_points=True,diff_threshold=0.1):
+    
+    mf = pd.DataFrame(metrics_list)
+    
+    plt.figure(figsize=(15,10))
+    plt.gcf().set_facecolor('gainsboro')
+    plt.gca().set_facecolor('gainsboro')
+    plt.grid(True, color='white')
+
+    # Add labels, title, and legend with thicker lines
+    plt.xlabel('d values')
+    plt.ylabel('Metric values')
+    plt.title('Tabling metrics over different d values')
+
+    for col in [item for item in mf.columns if item != 'd']:
+        plt.plot(mf.d,mf[col],label=col,linewidth=5)
+    
+    # add vertical lines and labels for inflection points
+    if inflection_points:
+        inflection_points = find_inflection_points(mf,diff_threshold=diff_threshold)
+        for point in inflection_points:
+            plt.axvline(x=point, color='black', linestyle='--', linewidth=2)
+            plt.text(point,0.5,str(point),rotation=90,fontsize=12)
+
+    plt.legend(loc='best',handlelength=1)
+
+    return plt.gcf()
