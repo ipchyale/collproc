@@ -5,11 +5,18 @@ import numpy as np
 sys.path.append(os.path.expanduser("~")+"/ivpy/src")
 from ivpy import *
 from ivpy.plot import overlay
-from ivpy.glyph import _radar,_mat
+from ivpy.glyph import radar
 import pandas as pd
 
 HOME = os.path.expanduser("~") + "/"
 lmlvalsfile = HOME + "lmlproc/proc/genome/lml.pkl"
+
+colors = {
+    "lola_orange": "#c99277",
+    "lola_orange_grey": "#403931",
+    "manray_cream": "#fef7db",
+    "manray_green": "#235e31"
+}
 
 def pkl(o,o_path):
     with open(o_path,'wb') as f:
@@ -71,9 +78,20 @@ class CollectionItem:
         self.fluorescence = [] # list of floats (AUC)
         self.goose = None
 
-    def draw_glyph(self,overwrite=False,return_glyph=True,
-                   universe='lml',collvalsfile=None,colorloc='base',
-                   side=1600,c='#c99277'):
+    def draw_glyph(self,
+                   overwrite=False,
+                   return_glyph=True,
+                   universe='lml',
+                   collvalsfile=None,
+                   colorloc='base',
+                   fill='gray',
+                   side=1600,
+                   outline='black',
+                   outlinewidth=8,
+                   gridlinefill='lightgrey',
+                   gridlinewidth=4,
+                   colloutline='dodgerblue'
+                   ):
         
         if all([self.glyph is not None,not overwrite]):
             print("Glyph already exists. Set `overwrite=True` to overwrite.")        
@@ -81,30 +99,25 @@ class CollectionItem:
         if universe=='lml':
             lmlnorms = get_glyph_norms(self,'lml',colorloc)
             if collvalsfile is not None:
-                lmlradar = _radar(lmlnorms,radii=True,gridlines=True,radarfill='dimgrey',outline='#403931',side=side)
-                lmlradar = _mat(lmlradar)
+                lmlradar = radar(lmlnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth)
 
                 collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
-                collradar = _radar(collnorms,radii=False,gridlines=False,radarfill=None,outline=c,side=side,coll=True)
-                collradar = _mat(collradar)
+                collradar = radar(collnorms,fill=None,side=side,outline=colloutline,outlinewidth=int(side/50),radii=False,gridlines=False)
 
-                radar = overlay(lmlradar,collradar,side=side,bg='transparent')
+                g = overlay(lmlradar,collradar,side=side,bg='transparent') # lml with coll overlay
 
             elif collvalsfile is None:
-                radar = _radar(lmlnorms,radii=True,gridlines=True,radarfill=c,outline='#403931',side=side)
-                radar = _mat(radar)
+                g = radar(lmlnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # lml only
 
         elif universe=='coll':
             collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
-            radar = _radar(collnorms,radii=True,gridlines=True,radarfill=c,outline='#403931',side=side)
-            radar = _mat(radar)
+            g = radar(collnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # coll only
 
-        
         if overwrite:
-            self.glyph = radar
+            self.glyph = g
 
         if return_glyph:
-            return radar
+            return g
 
 def get_glyph_norm(i,dim,bounds):
     if dim=='roughness':
@@ -132,19 +145,19 @@ def get_glyph_norms(i,universe,colorloc,collvalsfile=None):
     
     if universe=='lml':
         lmlbounds = get_lmlbounds()
-        norms = [ # left, top, right, bottom
-            get_glyph_norm(i,'thickness',lmlbounds['thickness']),
+        norms = [ # counterclockwise from top
             get_glyph_norm(i,colordim,lmlbounds[colordim]),
+            get_glyph_norm(i,'thickness',lmlbounds['thickness']),
+            get_glyph_norm(i,'roughness',lmlbounds['roughness']),
             get_glyph_norm(i,'gloss',lmlbounds['gloss']),
-            get_glyph_norm(i,'roughness',lmlbounds['roughness'])
         ]
     elif universe=='coll':
         collbounds = get_collbounds(collvalsfile)
         norms = [
-            get_glyph_norm(i,'thickness',collbounds['thickness']),
             get_glyph_norm(i,colordim,collbounds[colordim]),
+            get_glyph_norm(i,'thickness',collbounds['thickness']),
+            get_glyph_norm(i,'roughness',collbounds['roughness']),
             get_glyph_norm(i,'gloss',collbounds['gloss']),
-            get_glyph_norm(i,'roughness',collbounds['roughness'])
         ]
         
     return norms
