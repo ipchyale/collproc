@@ -69,7 +69,7 @@ class CollectionItem:
         self.title = ''
         self.date = ''
         self.medium = ''
-        self.dims = []
+        self.dims = ''
         self.dimvis = None
         self.credit = ''
         self.glyph = None
