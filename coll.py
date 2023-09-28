@@ -167,9 +167,7 @@ def class_list_to_dataframe(class_list):
     Converts a list of class instances to a pandas dataframe.
     """
 
-    df = pd.DataFrame()
-
-    for i in class_list:
-        df = df.append(i.__dict__,ignore_index=True)
+    data = [i.__dict__ for i in class_list]
+    df = pd.DataFrame(data)
 
     return df
