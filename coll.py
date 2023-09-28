@@ -60,6 +60,7 @@ def get_collbounds(collvalsfile):
 
 class CollectionItem:
     def __init__(self):
+        self.coll = ''
         self.acc = ''
         self.printpath = ''  
         self.artist = ''
@@ -68,7 +69,8 @@ class CollectionItem:
         self.title = ''
         self.date = ''
         self.medium = ''
-        self.dims = ''
+        self.dims = []
+        self.dimvis = None
         self.credit = ''
         self.glyph = None
         self.thickness = [] # list of floats
