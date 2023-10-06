@@ -288,7 +288,7 @@ def find_inflection_points(mf, diff_threshold=0.1):
     for col in [item for item in mf.columns if item != 'd']:
         for i in range(1, len(mf)):
             if mf[col].iloc[i] - mf[col].iloc[i-1] > diff_threshold:
-                d_value = round(mf.d.iloc[i], 3)
+                d_value = round(mf.d.iloc[i], 6)
                 inflection_points.append(d_value)
 
     # return all inflection points appearing more than once

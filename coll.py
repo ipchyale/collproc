@@ -87,6 +87,7 @@ class CollectionItem:
                    collvalsfile=None,
                    colorloc='base',
                    fill='gray',
+                   alpha=1.0,
                    side=1600,
                    outline='black',
                    outlinewidth=8,
@@ -101,19 +102,19 @@ class CollectionItem:
         if universe=='lml':
             lmlnorms = get_glyph_norms(self,'lml',colorloc)
             if collvalsfile is not None:
-                lmlradar = radar(lmlnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth)
+                lmlradar = radar(lmlnorms,fill=fill,side=side,alpha=alpha,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth)
 
                 collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
-                collradar = radar(collnorms,fill=None,side=side,outline=colloutline,outlinewidth=int(side/50),radii=False,gridlines=False)
+                collradar = radar(collnorms,fill=None,side=side,outline=colloutline,outlinewidth=int(side/30),radii=False,gridlines=False)
 
                 g = overlay(lmlradar,collradar,side=side,bg='transparent') # lml with coll overlay
 
             elif collvalsfile is None:
-                g = radar(lmlnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # lml only
+                g = radar(lmlnorms,fill=fill,side=side,alpha=alpha,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # lml only
 
         elif universe=='coll':
             collnorms = get_glyph_norms(self,'coll',colorloc,collvalsfile)
-            g = radar(collnorms,fill=fill,side=side,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # coll only
+            g = radar(collnorms,fill=fill,side=side,alpha=alpha,outline=outline,outlinewidth=outlinewidth,gridlinefill=gridlinefill,gridlinewidth=gridlinewidth) # coll only
 
         if overwrite:
             self.glyph = g
@@ -121,13 +122,16 @@ class CollectionItem:
         if return_glyph:
             return g
 
-def get_glyph_norm(i,dim,bounds):
+def get_glyph_norm(i,dim,bounds,mmode='M2'):
     if dim=='roughness':
         val = np.median([item['roughness'] for item in i.texture])
     elif dim=='bstar_base':
-        val = np.median([item['LAB_B'] for item in i.color if item['mloc']=='base'])
+        if mmode=='M2':
+            val = np.median([item['LAB_B'] for item in i.color if item['mloc'] in ['base','dmin'] and item['mmode']=='M2'])
+        else:
+            val = np.median([item['LAB_B'] for item in i.color if item['mloc'] in ['base','dmin']])
     elif dim=='bstar_image':
-        val = np.median([item['LAB_B'] for item in i.color if item['mloc']=='image'])
+        val = np.median([item['LAB_B'] for item in i.color if item['mloc'] in ['image','dmax']])
     else:
         val = np.median(getattr(i,dim))    
     
