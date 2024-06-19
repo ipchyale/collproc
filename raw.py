@@ -194,36 +194,55 @@ def fproc(f: str, fname=True, dimension='thickness', threshold=0.8) -> pd.DataFr
     return df
 
 def process_string(s: str) -> list:
-    # 1. Split string using possible delimiters
-    tokens = re.split(r'[_\- ]+', s)
-    
-    # 2. Strip non-alphanumeric characters from the beginning and end of each token
+    # Normalize case, split string using possible delimiters, and strip non-alphanumeric characters
+    tokens = re.split(r'[_\- ]+', s.lower())
     cleaned_tokens = [re.sub(r'^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$', '', token).strip() for token in tokens]
-    
     return cleaned_tokens
 
 def parse_sample_id(s: str) -> dict:
-    
     tokens = process_string(s)
-    
+
+    # Define regular expressions for each category
     patterns = {
-        'catalog': r'^\d{1,4}[a-zA-Z]{0,3}$',
-        'manbran': r'^[a-z][a-z0-9]$',
-        'mtrial': r'^\d$',  # matches a single integer
-        'mloc': r'^[Dd][Mm][Ii][Nn]$|^[Dd][Mm][Aa][Xx]$|^[Dd][Mm][Ii][Mm]$|^[Dd][Mm][Ii][Xx]$|^[Dd][Ii][Nn]$', # matches various combinations of D, M, I, N, A, X
-        'mmode': r'^M[0-4]$'  # matches M followed by a single digit from 0 to 4
+        'catalog': r'^\d{1,4}[a-z]{0,3}$',
+        'mloc': r'^dmin$|^dmax$|^dmid$|^dmim$|^din$|^dmix$',
+        'manbran': r'^[a-z][a-z0-9]*$',
+        'mtrial': r'^\d$',  # Matches a single integer for trial number
+        'additional': r'^[a-z]+$'  # Adjust based on the expected format of additional differentiators
     }
-    
+
     result = {}
-    
+    used_tokens = set()
+
+    # Process the catalog number
+    if tokens:
+        result['catalog'] = tokens[0] if re.match(patterns['catalog'], tokens[0]) else None
+        used_tokens.add(tokens[0])
+
+    # Attempt to identify the trial number from the last token
+    if re.match(patterns['mtrial'], tokens[-1]):
+        result['mtrial'] = tokens[-1]
+        used_tokens.add(tokens[-1])
+    else:
+        result['mtrial'] = None
+
+    # Process other tokens based on their patterns, excluding those already used
     for key, pattern in patterns.items():
+        if key in ['catalog', 'mtrial']:
+            continue
         for token in tokens:
-            if re.match(pattern, token):
+            if token not in used_tokens and re.match(pattern, token):
                 result[key] = token
-                break
-        else:
+                used_tokens.add(token)
+                break  # Stop searching after the first match for each category
+        if key not in result:
             result[key] = None
-    
+
+    # Any token not used yet could be an additional differentiator
+    unused_tokens = [token for token in tokens if token not in used_tokens]
+    if unused_tokens:
+        result['additional'] = unused_tokens[0] if unused_tokens else None
+
     return result
 
 def is_consecutive(series: pd.Series) -> bool:
