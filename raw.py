@@ -205,7 +205,7 @@ def parse_sample_id(s: str) -> dict:
     # Define regular expressions for each category
     patterns = {
         'catalog': r'^\d{1,4}[a-z]{0,3}$',
-        'mloc': r'^dmin$|^dmax$|^dmid$|^dmim$|^din$|^dmix$',
+        'mloc': r'^dmin$|^dmax$|^dmid$|^dmim$|^dim$|^din$|^dmix$',
         'manbran': r'^[a-z][a-z0-9]*$',
         'mtrial': r'^\d$',  # Matches a single integer for trial number
         'additional': r'^[a-z]+$'  # Adjust based on the expected format of additional differentiators
